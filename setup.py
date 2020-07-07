@@ -11,11 +11,6 @@ here = pathlib.Path(__file__).parent.resolve()
 # Get the long description from the README file
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 
-
-if sys.version_info[0] < 3 or sys.version_info[0] == 3 and sys.version_info[1] < 6:
-    sys.exit('Sorry, Python < 3.6 is not supported')
-
-
 setup(
     name=package_name,
     version='0.1a',
@@ -27,7 +22,6 @@ setup(
     license='MIT',
     classifiers=[
         'Development Status :: 3 - Alpha',
-        'Framework :: Python',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3 :: Only',
