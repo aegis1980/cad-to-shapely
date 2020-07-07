@@ -10,7 +10,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='cad_to_shapely',
-    version='0.1.1a',
+    version='0.1.2',
     description='Import CAD files to Shapely geometry',
     author='Jon Robinson',
     author_email='jonrobinson1980@gmail.com',
