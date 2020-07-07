@@ -1,7 +1,6 @@
 from typing import List
 import random
 
-
 import shapely.geometry as sg
 
 def point_in_polygon(polygon :sg.Polygon, limit = 1000):

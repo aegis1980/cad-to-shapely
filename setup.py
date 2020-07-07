@@ -22,14 +22,12 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Scientific/Engineering',
-    ],
-    package_dir={'': 'src'}, 
-    packages=find_packages(where='src'),  
-    python_requires='>=3.6, <4',
+    ], 
+    packages=find_packages(),  
+    python_requires='>=3.5, <4',
     url='https://github.com/aegis1980/cad_to_shapely',
     install_requires=['ezdxf', 'numpy', 'shapely' , 'geomdl'],
     extras_require={  # Optional
         'dev': ['matplotlib']
-    },
-    include_package_data=True,
+    }
 )
