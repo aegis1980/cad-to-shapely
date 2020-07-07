@@ -34,5 +34,5 @@ def import_dxf_example():
 
     plt.show()
     
-
-import_dxf_example()
+if __name__ == "__main__":
+    import_dxf_example()
