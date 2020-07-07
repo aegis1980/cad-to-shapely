@@ -1,0 +1,38 @@
+import os
+import matplotlib.pyplot as plt
+
+from dxf import DxfImporter
+
+import utils
+
+
+def import_dxf_example():
+    dxf_filepath = os.path.join(os.getcwd(),'example_files','section_holes_complex.dxf')
+    my_dxf = DxfImporter(dxf_filepath)
+    my_dxf.process()   
+    my_dxf.cleanup()
+    
+    polygons = my_dxf.polygons
+    for p in polygons:
+        x,y = p.exterior.xy
+   #     plt.plot(x,y)
+    
+
+    new = utils.find_holes(polygons)
+
+    x,y = new.exterior.xy
+    plt.plot(x,y)
+    for hole in new.interiors:
+        x,y = hole.xy
+        plt.plot(x,y)
+
+ 
+    for i in range(100):
+        p=  utils.point_in_polygon(new)
+        x,y = p.xy
+        plt.plot(x, y, marker='o', markersize=3, color="red")
+
+    plt.show()
+    
+
+import_dxf_example()
