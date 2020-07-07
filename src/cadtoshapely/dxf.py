@@ -9,7 +9,6 @@ import ezdxf.entities as dxf
 import shapely.geometry as sg
 
 from importer import CadImporter
-from svg import _SvgPath 
 
 
 class DxfImporter(CadImporter):

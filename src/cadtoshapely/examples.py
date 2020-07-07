@@ -2,8 +2,7 @@ import os
 import matplotlib.pyplot as plt
 
 from dxf import DxfImporter
-
-import utils
+import utils 
 
 
 def import_dxf_example():

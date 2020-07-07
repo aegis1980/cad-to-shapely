@@ -1,10 +1,7 @@
 import sys
 import os
 import pathlib
-from setuptools import setup
-from io import open as io_open
-
-package_name = 'cad_to_shapely'
+from setuptools import setup, find_packages
 
 here = pathlib.Path(__file__).parent.resolve()
 
@@ -12,9 +9,8 @@ here = pathlib.Path(__file__).parent.resolve()
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
-    name=package_name,
-    version='0.1a',
-    packages = [package_name],
+    name='cad_to_shapely',
+    version='0.1.1a',
     description='Import CAD files to Shapely geometry',
     author='Jon Robinson',
     author_email='jonrobinson1980@gmail.com',
@@ -27,11 +23,13 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Scientific/Engineering',
     ],
+    package_dir={'': 'src'}, 
+    packages=find_packages(where='src'),  
+    python_requires='>=3.6, <4',
     url='https://github.com/aegis1980/cad_to_shapely',
-    install_requires=['ezdxf', 'numpy', 'shapely' , 'geomdl', 'matplotlib'],
+    install_requires=['ezdxf', 'numpy', 'shapely' , 'geomdl'],
     extras_require={  # Optional
         'dev': ['matplotlib']
     },
     include_package_data=True,
-
 )
