@@ -1,4 +1,4 @@
-from typing import List
+from typing import List,Tuple
 import random
 
 import shapely.geometry as sg
@@ -17,9 +17,16 @@ def point_in_polygon(polygon :sg.Polygon, limit = 1000):
     return None
 
 
-def find_holes(polygons : List[sg.Polygon]):
+def find_holes(polygons : List[sg.Polygon]) -> sg.Polygon:
     """
-    Returns a single polygon with holes, built from a list of (imported CAD) polygons
+    Construct single polygon from imported CAD goemetry. 
+    Assumes there is only one parent shape (the one with the largest gross area.)
+
+    Access external perimeter with *polygon.exterior*
+    Access holes perimeter(s, if there are any) with *polygon.interiors*
+
+    Returns:
+        Shapely Polygon with holes 
     """
 
 
@@ -41,3 +48,24 @@ def find_holes(polygons : List[sg.Polygon]):
 
     new = sg.Polygon(parent,holes=keepers)
     return new
+
+
+
+def facets(polygon: sg.Polygon, inc_holes =True):
+    n = len(polygon.exterior.xy[0])
+    f = []
+    for i in range(n-1):
+        f.append([i, i+1])
+    f.append([n-1,0])
+
+    if inc_holes:
+        for hole in polygon.interiors:
+            lastn = len(f)        
+            n = len(hole.xy[0])
+            g = []
+            for i in range(lastn, lastn+n-1):
+                g.append([i, i+1])
+            g.append([lastn+n-1,lastn])
+            f.extend(g)
+    
+    return f

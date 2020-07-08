@@ -1,13 +1,13 @@
 import os
 import matplotlib.pyplot as plt
 
-from dxf import DxfImporter
-import utils 
+import dxf
+import utils
 
 
 def import_dxf_example():
     dxf_filepath = os.path.join(os.getcwd(),'example_files','section_holes_complex.dxf')
-    my_dxf = DxfImporter(dxf_filepath)
+    my_dxf = dxf.DxfImporter(dxf_filepath)
     my_dxf.process()   
     my_dxf.cleanup()
     
