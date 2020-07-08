@@ -8,10 +8,10 @@ from ezdxf.addons import Importer
 import ezdxf.entities as dxf 
 import shapely.geometry as sg
 
-import cadimporter
+from importer import CadImporter
 
 
-class DxfImporter(cadimporter.CadImporter):
+class DxfImporter(CadImporter):
 
     def __init__(self,filename : str):
         super().__init__(filename)
