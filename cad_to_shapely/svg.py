@@ -7,7 +7,7 @@ from typing import List,Dict
 
 from shapely.geometry import LineString
 
-from importer import CadImporter
+from cadimporter import CadImporter
 
 
 class _SvgPath():

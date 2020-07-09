@@ -8,7 +8,7 @@ from ezdxf.addons import Importer
 import ezdxf.entities as dxf 
 import shapely.geometry as sg
 
-from importer import CadImporter
+from cadimporter import CadImporter
 
 
 class DxfImporter(CadImporter):
