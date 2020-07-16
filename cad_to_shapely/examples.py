@@ -14,8 +14,7 @@ def import_dxf_example():
     polygons = my_dxf.polygons
     for p in polygons:
         x,y = p.exterior.xy
-   #     plt.plot(x,y)
-    
+ 
 
     new = utils.find_holes(polygons)
 

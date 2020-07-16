@@ -7,5 +7,8 @@ import utils
 import cadimporter
 import svg
 import dxf
-import examples
 
+try:
+    import examples
+except ImportError:
+    print('you need matplotlib for examples')
