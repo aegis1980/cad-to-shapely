@@ -11,4 +11,4 @@ import dxf
 try:
     import examples
 except ImportError:
-    print('you need matplotlib for examples')
+    pass

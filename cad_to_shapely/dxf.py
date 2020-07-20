@@ -5,16 +5,26 @@ import numpy as np
 from geomdl import NURBS, BSpline, utilities
 import ezdxf
 from ezdxf.addons import Importer
-import ezdxf.entities as dxf 
+import ezdxf.entities as entities
 import shapely.geometry as sg
 
 from cadimporter import CadImporter
+import geometry
 
 
 class DxfImporter(CadImporter):
 
     def __init__(self,filename : str):
         super().__init__(filename)
+
+    def _get_attribs(self, e : entities.DXFEntity):
+        """
+
+        """
+        attribs = geometry._GeometryAttribs()
+        attribs['layer'] = e.dxf.layer
+        
+        return attribs
 
     def _process_2d_polyline(self,polyline):
         xy = []
@@ -29,7 +39,7 @@ class DxfImporter(CadImporter):
         self.geometry.append(pl) 
         
 
-    def _process_2d_spline(self,spline : dxf.Spline, delta = 0.1):
+    def _process_2d_spline(self,spline : entities.Spline, delta = 0.1):
         """
         Uses geomdl module to create intermediate b-spline from dxf spline.
         This is then sampled as a linestring since shapely does not support splines. 
@@ -48,9 +58,13 @@ class DxfImporter(CadImporter):
         #TODO conditional delta: min length, n and check for straight lines
 
         xyz = np.array(curve.evalpts)
-        xy = list([x[:-1] for x in xyz]) #remove z data
+
+        #discard z data (for now!)
+        xy = list([x[:-1] for x in xyz])
 
         pl = sg.LineString(xy)
+        geometry.patch_geometry_with_attribs(pl,self._get_attribs(spline))
+
         self.geometry.append(pl)
   
 
@@ -60,14 +74,14 @@ class DxfImporter(CadImporter):
         uses ezdxf to read dxf file and populate geometry
         """
         sdoc = ezdxf.readfile(self.filename)
-
+    
         ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE')
         n_splines = n_polylines = 0
         for e in ents:
-            if isinstance(e, dxf.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
+            if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
                 self._process_2d_spline(e)
                 n_splines +=1
-            elif isinstance(e, dxf.Polyline):
+            elif isinstance(e, entities.Polyline):
                 if e.get_mode() == 'AcDb2dPolyline':
                     self._process_2d_polyline(e)
                     n_polylines += 1
