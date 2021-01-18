@@ -68,7 +68,7 @@ class DxfImporter(CadImporter):
         self.geometry.append(pl)
   
 
-    def process(self, fillcolor = '#ff0000'):
+    def process(self, spline_delta = 0.1, fillcolor = '#ff0000'):
         """
         implement superclass abstract method
         uses ezdxf to read dxf file and populate geometry
@@ -79,7 +79,7 @@ class DxfImporter(CadImporter):
         n_splines = n_polylines = 0
         for e in ents:
             if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
-                self._process_2d_spline(e)
+                self._process_2d_spline(e, delta= spline_delta)
                 n_splines +=1
             elif isinstance(e, entities.Polyline):
                 if e.get_mode() == 'AcDb2dPolyline':

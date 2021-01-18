@@ -22,7 +22,7 @@ class CadImporter(abc.ABC):
         """
         pass
 
-    def cleanup(self) -> str:
+    def cleanup(self, simplify = True) -> str:
         if not self.geometry:
             return 'no cleanup since no geometry. have you run process yet?'
 
@@ -32,6 +32,11 @@ class CadImporter(abc.ABC):
 
         result, dangles, cuts, invalids = ops.polygonize_full(self.geometry)
         self.polygons = list(result)
+
+        if simplify:
+            for i,p in enumerate(self.polygons):
+                self.polygons[i] = self.polygons[i].simplify(0)
+
         return 'done'
 
 
