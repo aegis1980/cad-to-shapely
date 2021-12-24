@@ -31,7 +31,7 @@ class CadImporter(abc.ABC):
         #merge = ops.linemerge(multiline)
 
         result, dangles, cuts, invalids = ops.polygonize_full(self.geometry)
-        self.polygons = list(result)
+        self.polygons = list(result.geoms)
 
         if simplify:
             for i,p in enumerate(self.polygons):
