@@ -63,7 +63,7 @@ class DxfImporter(CadImporter):
         xy = list([x[:-1] for x in xyz])
 
         pl = sg.LineString(xy)
-        geometry.patch_geometry_with_attribs(pl,self._get_attribs(spline))
+        # geometry.patch_geometry_with_attribs(pl,self._get_attribs(spline))
 
         self.geometry.append(pl)
   

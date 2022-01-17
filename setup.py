@@ -29,6 +29,6 @@ setup(
     url='https://github.com/aegis1980/cad_to_shapely',
     install_requires=['ezdxf', 'numpy', 'shapely' , 'geomdl'],
     extras_require={  # Optional
-        'dev': ['matplotlib']
+        'dev': ['matplotlib', 'pytest']
     }
 )
