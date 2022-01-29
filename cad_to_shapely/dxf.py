@@ -1,4 +1,5 @@
 import os
+import math
 
 import numpy as np  
 
@@ -59,7 +60,7 @@ class DxfImporter(CadImporter):
 
         xyz = np.array(curve.evalpts)
 
-        #discard z data (for now!)
+        #discard z data 
         xy = list([x[:-1] for x in xyz])
 
         pl = sg.LineString(xy)
@@ -67,6 +68,27 @@ class DxfImporter(CadImporter):
 
         self.geometry.append(pl)
   
+    def _process_line(self, line : entities.Line):
+        l = sg.LineString([line.start(), line.end()])
+        if l.length > 0:
+            self.geometry.append(l) 
+
+    def process_arc(self, arc: entities.Arc, segments_per_degree : float = 2):
+        """
+        shapely does not do arcs, so we make it into an n-lined polyline.
+        modified from here: https://stackoverflow.com/questions/30762329/how-to-create-polygons-with-arcs-in-shapely-or-a-better-library
+        """
+        start_angle = math.radians(arc.dxf.start_angle)
+        end_angle = math.radians(arc.dxf.start_angle)
+
+
+        # The coordinates of the arc
+        theta = np.radians(np.linspace(start_angle, end_angle, numsegments))
+        x = cx + r * np.cos(theta)
+        y = cy + r * np.sin(theta)
+
+        arc = sg.LineString(np.column_stack([x, y]))
+
 
     def process(self, spline_delta = 0.1, fillcolor = '#ff0000'):
         """
@@ -76,7 +98,7 @@ class DxfImporter(CadImporter):
         sdoc = ezdxf.readfile(self.filename)
     
         ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE')
-        n_splines = n_polylines = 0
+        n_splines = n_polylines = n_lines = 0
         for e in ents:
             if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
                 self._process_2d_spline(e, delta= spline_delta)
@@ -87,6 +109,12 @@ class DxfImporter(CadImporter):
                     n_polylines += 1
                 else:
                     pass
+            elif isinstance(e, entities.Line):
+                self._process_line(e)
+                n_lines += 1
 
-        return 'Found {} polylines and {} splines'.format(n_polylines,n_splines)
+            elif isinstance(e, entities.Arc):
+                self._process_arc(e)
+
+        return f'Found {n_polylines} polylines, {n_splines} splines, {n_lines} lines'
  
