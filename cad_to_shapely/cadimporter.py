@@ -1,8 +1,15 @@
+""" 
+
+"""
+
 import abc
 from typing import List,Tuple
 
 import shapely.geometry as sg
 from shapely import ops
+from shapely.coords import CoordinateSequence
+
+from shapely.geometry import Point, LineString
 
 class CadImporter(abc.ABC):
     """
@@ -22,15 +29,39 @@ class CadImporter(abc.ABC):
         """
         pass
 
-    def cleanup(self, simplify = True) -> str:
+    def cleanup(self, simplify = True, zip_length = 0.000001) -> str:
         if not self.geometry:
             return 'no cleanup since no geometry. have you run process yet?'
 
 
-        multiline = sg.MultiLineString(self.geometry)
-        #merge = ops.linemerge(multiline)
+        if zip_length:
+            zip = 0
+            for i in range(len(self.geometry)):
+                ls1 = self.geometry[i]
+                fp_1 = Point(ls1.coords[0]) #startpoint
+                lp_1 = Point(ls1.coords[-1]) #endpoint
+
+                for j in range(i+1,len(self.geometry)):
+                    ls2 = self.geometry[j]
+                    fp_2 = Point(ls2.coords[0])
+                    lp_2 = Point(ls2.coords[-1])
+                    if fp_1.distance(fp_2) < zip_length and fp_1.distance(fp_2) != 0:
+                        self.geometry[j] = LineString([ls1.coords[0]]+ls2.coords[1:])
+                        zip += 1
+                    if fp_1.distance(lp_2) < zip_length and fp_1.distance(lp_2) != 0:
+                        self.geometry[j]  = LineString(ls2.coords[:-1]+[ls1.coords[-1]])
+                        zip += 1
+                    if lp_1.distance(fp_2) < zip_length and lp_1.distance(fp_2) !=0:
+                        self.geometry[j] = LineString([ls1.coords[0]]+ls2.coords[1:])
+                        zip += 1
+                    if lp_1.distance(lp_2) < zip_length and lp_1.distance(lp_2)!=0:
+                        self.geometry[j] = LineString(ls2.coords[:-1]+[ls1.coords[-1]])
+                        zip += 1 
+            print (f"Zipped {zip} points")
+     
 
         result, dangles, cuts, invalids = ops.polygonize_full(self.geometry)
+        #print(  result, dangles, cuts, invalids)
         self.polygons = list(result.geoms)
 
         if simplify:

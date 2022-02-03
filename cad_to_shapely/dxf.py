@@ -11,7 +11,7 @@ import shapely.geometry as sg
 
 from cadimporter import CadImporter
 import geometry
-
+import matplotlib.pyplot as plt
 
 class DxfImporter(CadImporter):
 
@@ -69,25 +69,40 @@ class DxfImporter(CadImporter):
         self.geometry.append(pl)
   
     def _process_line(self, line : entities.Line):
-        l = sg.LineString([line.start(), line.end()])
+        l = sg.LineString([
+            (line.dxf.start.x,line.dxf.start.y),
+            (line.dxf.end.x,line.dxf.end.y)
+        ])
+
         if l.length > 0:
             self.geometry.append(l) 
 
-    def process_arc(self, arc: entities.Arc, segments_per_degree : float = 2):
+    def _process_arc(self, arc: entities.Arc, degrees_per_segment : float = 5):
         """
         shapely does not do arcs, so we make it into an n-lined polyline.
         modified from here: https://stackoverflow.com/questions/30762329/how-to-create-polygons-with-arcs-in-shapely-or-a-better-library
         """
-        start_angle = math.radians(arc.dxf.start_angle)
-        end_angle = math.radians(arc.dxf.start_angle)
+        start_angle = arc.dxf.start_angle
+        end_angle = arc.dxf.end_angle
+        if start_angle>end_angle:
+            end_angle += 360
 
+        r = arc.dxf.radius
+        cx = arc.dxf.center.x
+        cy = arc.dxf.center.y
+        numsegments = int((end_angle-start_angle)/degrees_per_segment)
 
         # The coordinates of the arc
         theta = np.radians(np.linspace(start_angle, end_angle, numsegments))
+ 
         x = cx + r * np.cos(theta)
         y = cy + r * np.sin(theta)
 
-        arc = sg.LineString(np.column_stack([x, y]))
+        pts = np.column_stack([x, y])
+
+        arc = sg.LineString(pts)
+
+        self.geometry.append(arc)
 
 
     def process(self, spline_delta = 0.1, fillcolor = '#ff0000'):
@@ -98,7 +113,7 @@ class DxfImporter(CadImporter):
         sdoc = ezdxf.readfile(self.filename)
     
         ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE')
-        n_splines = n_polylines = n_lines = 0
+        n_splines = n_polylines = n_lines = n_arcs = 0
         for e in ents:
             if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
                 self._process_2d_spline(e, delta= spline_delta)
@@ -115,6 +130,7 @@ class DxfImporter(CadImporter):
 
             elif isinstance(e, entities.Arc):
                 self._process_arc(e)
+                n_arcs += 1
 
-        return f'Found {n_polylines} polylines, {n_splines} splines, {n_lines} lines'
+        return f'Found {n_polylines} polylines, {n_splines} splines, {n_lines} lines, {n_arcs} arcs'
  
