@@ -1,5 +1,6 @@
 import os
 import math
+from matplotlib.patches import Polygon
 
 import numpy as np  
 
@@ -12,6 +13,7 @@ import shapely.geometry as sg
 from cadimporter import CadImporter
 import geometry
 import matplotlib.pyplot as plt
+import utils
 
 class DxfImporter(CadImporter):
 
@@ -27,11 +29,30 @@ class DxfImporter(CadImporter):
         
         return attribs
 
-    def _process_2d_polyline(self,polyline):
+    def _process_2d_polyline(self,polyline : entities.Polyline, degrees_per_segment : float = 1):
         xy = []
-        polyline
-        for i, location in enumerate(polyline.points()): 
-            xy.append([location.x, location.y])
+
+        for i,v1 in enumerate(polyline.vertices):
+            xy.append([v1.dxf.location.x,v1.dxf.location.y])
+            if v1.dxf.bulge and v1.dxf.bulge!=0:
+                if i+1 == len(polyline.vertices):
+                    if polyline.is_closed:
+                        v2 = polyline.vertices[0]
+                    else:
+                        break
+                else:
+                     v2 = polyline.vertices[i+1]
+
+                p1 = [v1.dxf.location.x,v1.dxf.location.y] 
+                p2 = [v2.dxf.location.x,v2.dxf.location.y] 
+
+                pts = utils.arc_points_from_bulge(p1,p2,v1.dxf.bulge,degrees_per_segment)
+                pts = pts[1:-1]
+
+                xy.extend(pts)
+
+  #      for i, location in enumerate(polyline.points()): 
+  #          xy.append([location.x, location.y])
         
         if polyline.is_closed:    
             pl = sg.LinearRing(xy)
@@ -77,28 +98,23 @@ class DxfImporter(CadImporter):
         if l.length > 0:
             self.geometry.append(l) 
 
-    def _process_arc(self, arc: entities.Arc, degrees_per_segment : float = 5):
+    def _process_arc(self, arc: entities.Arc, degrees_per_segment : float = 1):
         """
         shapely does not do arcs, so we make it into an n-lined polyline.
         modified from here: https://stackoverflow.com/questions/30762329/how-to-create-polygons-with-arcs-in-shapely-or-a-better-library
         """
-        start_angle = arc.dxf.start_angle
-        end_angle = arc.dxf.end_angle
+        start_angle = math.radians(arc.dxf.start_angle)
+        end_angle = math.radians(arc.dxf.end_angle)
         if start_angle>end_angle:
-            end_angle += 360
+            end_angle += 2 * math.pi
 
-        r = arc.dxf.radius
-        cx = arc.dxf.center.x
-        cy = arc.dxf.center.y
-        numsegments = int((end_angle-start_angle)/degrees_per_segment)
-
-        # The coordinates of the arc
-        theta = np.radians(np.linspace(start_angle, end_angle, numsegments))
- 
-        x = cx + r * np.cos(theta)
-        y = cy + r * np.sin(theta)
-
-        pts = np.column_stack([x, y])
+        pts =  utils.arc_points(
+            start_angle,
+            end_angle,
+            arc.dxf.radius,
+            [arc.dxf.center.x,arc.dxf.center.y],
+            degrees_per_segment
+        )
 
         arc = sg.LineString(pts)
 
