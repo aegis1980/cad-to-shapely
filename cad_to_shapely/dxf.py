@@ -1,4 +1,6 @@
 import os
+import math
+from matplotlib.patches import Polygon
 
 import numpy as np  
 
@@ -10,7 +12,8 @@ import shapely.geometry as sg
 
 from cadimporter import CadImporter
 import geometry
-
+import matplotlib.pyplot as plt
+import utils
 
 class DxfImporter(CadImporter):
 
@@ -26,11 +29,30 @@ class DxfImporter(CadImporter):
         
         return attribs
 
-    def _process_2d_polyline(self,polyline):
+    def _process_2d_polyline(self,polyline : entities.Polyline, degrees_per_segment : float = 1):
         xy = []
-        polyline
-        for i, location in enumerate(polyline.points()): 
-            xy.append([location.x, location.y])
+
+        for i,v1 in enumerate(polyline.vertices):
+            xy.append([v1.dxf.location.x,v1.dxf.location.y])
+            if v1.dxf.bulge and v1.dxf.bulge!=0:
+                if i+1 == len(polyline.vertices):
+                    if polyline.is_closed:
+                        v2 = polyline.vertices[0]
+                    else:
+                        break
+                else:
+                     v2 = polyline.vertices[i+1]
+
+                p1 = [v1.dxf.location.x,v1.dxf.location.y] 
+                p2 = [v2.dxf.location.x,v2.dxf.location.y] 
+
+                pts = utils.arc_points_from_bulge(p1,p2,v1.dxf.bulge,degrees_per_segment)
+                pts = pts[1:-1]
+
+                xy.extend(pts)
+
+  #      for i, location in enumerate(polyline.points()): 
+  #          xy.append([location.x, location.y])
         
         if polyline.is_closed:    
             pl = sg.LinearRing(xy)
@@ -59,7 +81,7 @@ class DxfImporter(CadImporter):
 
         xyz = np.array(curve.evalpts)
 
-        #discard z data (for now!)
+        #discard z data 
         xy = list([x[:-1] for x in xyz])
 
         pl = sg.LineString(xy)
@@ -67,6 +89,37 @@ class DxfImporter(CadImporter):
 
         self.geometry.append(pl)
   
+    def _process_line(self, line : entities.Line):
+        l = sg.LineString([
+            (line.dxf.start.x,line.dxf.start.y),
+            (line.dxf.end.x,line.dxf.end.y)
+        ])
+
+        if l.length > 0:
+            self.geometry.append(l) 
+
+    def _process_arc(self, arc: entities.Arc, degrees_per_segment : float = 1):
+        """
+        shapely does not do arcs, so we make it into an n-lined polyline.
+        modified from here: https://stackoverflow.com/questions/30762329/how-to-create-polygons-with-arcs-in-shapely-or-a-better-library
+        """
+        start_angle = math.radians(arc.dxf.start_angle)
+        end_angle = math.radians(arc.dxf.end_angle)
+        if start_angle>end_angle:
+            end_angle += 2 * math.pi
+
+        pts =  utils.arc_points(
+            start_angle,
+            end_angle,
+            arc.dxf.radius,
+            [arc.dxf.center.x,arc.dxf.center.y],
+            degrees_per_segment
+        )
+
+        arc = sg.LineString(pts)
+
+        self.geometry.append(arc)
+
 
     def process(self, spline_delta = 0.1, fillcolor = '#ff0000'):
         """
@@ -76,7 +129,7 @@ class DxfImporter(CadImporter):
         sdoc = ezdxf.readfile(self.filename)
     
         ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE')
-        n_splines = n_polylines = 0
+        n_splines = n_polylines = n_lines = n_arcs = 0
         for e in ents:
             if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
                 self._process_2d_spline(e, delta= spline_delta)
@@ -87,6 +140,13 @@ class DxfImporter(CadImporter):
                     n_polylines += 1
                 else:
                     pass
+            elif isinstance(e, entities.Line):
+                self._process_line(e)
+                n_lines += 1
 
-        return 'Found {} polylines and {} splines'.format(n_polylines,n_splines)
+            elif isinstance(e, entities.Arc):
+                self._process_arc(e)
+                n_arcs += 1
+
+        return f'Found {n_polylines} polylines, {n_splines} splines, {n_lines} lines, {n_arcs} arcs'
  
