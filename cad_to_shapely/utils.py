@@ -2,6 +2,7 @@ from typing import List,Tuple, Union
 import random
 import math
 import logging
+from warnings import catch_warnings
 
 import numpy as np
 import shapely.geometry as sg
@@ -84,7 +85,13 @@ def distance(p1 : List[float],p2 : List[float]) -> float:
 
 
 
-def arc_points(start_angle : float, end_angle : float, radius : float, center : List[float], degrees_per_segment : float) -> list:
+def arc_points(
+    start_angle : float, 
+    end_angle : float, 
+    radius : float, 
+    center : List[float], 
+    degrees_per_segment : float
+    ) -> list:
     """
     Coordinates of an arcs (for approximation as a polyline)
 
@@ -110,31 +117,60 @@ def arc_points(start_angle : float, end_angle : float, radius : float, center : 
 
 
 def arc_points_from_bulge(p1 : List[float], p2 : List[float], b : float, degrees_per_segment : float):
+    """
+    http://darrenirvine.blogspot.com/2015/08/polylines-radius-bulge-turnaround.html
 
+    Args:
+        p1 (List[float]): [description]
+        p2 (List[float]): [description]
+        b (float): bulge of the arc
+        degrees_per_segment (float): [description]
+
+    Returns:
+        [type]: point on arc
+    """
     # mid point between p1 & p2
     m = [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2]
 
-    d = distance(p1,p2)
-    radius = d*((b**2)+1)/ (4*b)
+
+    u = distance(p1,p2)
+
+    r = u*((b**2)+1)/ (4*b)
+
+    #if u> 2*r: # u cant be > diameter
+   #     r = u/2 
+    print (r, u )
+
+    try:
+        a = math.sqrt(r**2-(u*u/4))
+    except ValueError:
+        a = 0
     
-    # find centre
-    # https://stackoverflow.com/a/36211304/772333
-    k = math.sqrt((radius**2)-(d/2)**2)
-    base_x = k*(p1[1]-p2[1])/d
-    base_y = k*(p2[0]-p1[0])/d
+    dx = (p2[0]-p1[0])/u
+    dy = (p2[1]-p1[1])/u
 
+    A = np.array(p1)
+    B = np.array(p2)
+    # normal direction
+    N = np.array([dy,-dx])
+
+
+    # if bulge is negative arc is clockwise
+    # otherwise counter-clockwise
+    s = b/abs(b) #sigma = signum(b)
+    
+    #centre, as a np.array 2d point
+    C = ((A+B)/2) - s*a*N
+
+
+    logging.debug(f'radius {r:.1f} : distance {u:.1f} : centre {C[0]:.1f},{C[1]:.1f}')
+
+
+    start_angle = math.atan2(p1[1]-C[1], p1[0]-C[0])
     if b<0:
-        center = [m[0]+ base_x, m[1] + base_y]
-    else:
-        center = [m[0] + base_x, m[1] + base_y]
+        start_angle += math.pi
+    
+    theta = 4 *math.atan(b)
+    end_angle = start_angle + theta
 
-    logging.debug(f'radius {radius:.1f} : distance {d:.1f} : centre {center[0]:.1f},{center[0]:.1f}')
-
-
-    start_angle = math.atan2(p1[1]-center[1], p1[0]-center[0])
-    end_angle = math.atan2(p2[1]-center[1], p2[0]-center[0])
-
-    if start_angle>end_angle:
-        end_angle += 2 * math.pi
-
-    return arc_points(start_angle,end_angle,radius,center,degrees_per_segment)
+    return arc_points(start_angle,end_angle,r,C,degrees_per_segment)
