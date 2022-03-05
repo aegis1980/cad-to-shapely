@@ -1,3 +1,4 @@
+from cmath import pi
 from typing import List,Tuple, Union
 import random
 import math
@@ -41,7 +42,6 @@ def find_holes(polygons : List[sg.Polygon]) -> sg.Polygon:
 
     #sort by areas, largest first.
     polygons.sort(key=lambda x: x.area, reverse=True)
-    print([p.area for p in polygons])
     parent = polygons.pop(0)
 
     keepers = []
@@ -129,17 +129,11 @@ def arc_points_from_bulge(p1 : List[float], p2 : List[float], b : float, degrees
     Returns:
         [type]: point on arc
     """
-    # mid point between p1 & p2
-    m = [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2]
 
-
+    theta = 4 *math.atan(b)
     u = distance(p1,p2)
 
     r = u*((b**2)+1)/ (4*b)
-
-    #if u> 2*r: # u cant be > diameter
-   #     r = u/2 
-    print (r, u )
 
     try:
         a = math.sqrt(r**2-(u*u/4))
@@ -160,8 +154,11 @@ def arc_points_from_bulge(p1 : List[float], p2 : List[float], b : float, degrees
     s = b/abs(b) #sigma = signum(b)
     
     #centre, as a np.array 2d point
-    C = ((A+B)/2) - s*a*N
 
+    if abs(theta) <= math.pi:
+        C = ((A+B)/2) - s*a*N
+    else:
+        C = ((A+B)/2) + s*a*N
 
     logging.debug(f'radius {r:.1f} : distance {u:.1f} : centre {C[0]:.1f},{C[1]:.1f}')
 
@@ -170,7 +167,7 @@ def arc_points_from_bulge(p1 : List[float], p2 : List[float], b : float, degrees
     if b<0:
         start_angle += math.pi
     
-    theta = 4 *math.atan(b)
+    
     end_angle = start_angle + theta
 
     return arc_points(start_angle,end_angle,r,C,degrees_per_segment)

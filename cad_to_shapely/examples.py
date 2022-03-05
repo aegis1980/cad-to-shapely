@@ -7,6 +7,9 @@ import dxf
 import utils 
 
 def import_dxf_example1(filename : str, force_zip = False):
+    """
+    for debugging. just plots geometry with no polygon-making
+    """
     dxf_filepath = os.path.join(os.getcwd(),'example_files',filename)
     my_dxf = dxf.DxfImporter(dxf_filepath)
     my_dxf.process(spline_delta = 0.1) 
@@ -14,6 +17,7 @@ def import_dxf_example1(filename : str, force_zip = False):
         x,y = g.xy
         plt.plot(x,y)
     plt.show()
+    
 
 def import_dxf_example(filename : str, force_zip = False):
     dxf_filepath = os.path.join(os.getcwd(),'example_files',filename)
@@ -59,5 +63,7 @@ if __name__ == "__main__":
     #straight from http://www.steelweb.info/200x100x6.htm
     #filename = "200x100x6.dxf"
 
-    filename = "test2.dxf"
-    import_dxf_example1(filename)
+    filename = "test1.dxf"
+   # filename = "test2.dxf"
+    #filename = "test3.dxf"
+    import_dxf_example(filename)
