@@ -1,3 +1,4 @@
+import logging
 import os
 import math
 from matplotlib.patches import Polygon
@@ -121,15 +122,19 @@ class DxfImporter(CadImporter):
         self.geometry.append(arc)
 
 
-    def process(self, spline_delta = 0.1, fillcolor = '#ff0000'):
+    def process(self, spline_delta = 0.1):
         """
-        implement superclass abstract method
-        uses ezdxf to read dxf file and populate geometry
+        Args:
+            spline_delta (float, optional): _description_. Defaults to 0.1
+
+        Returns:
+            str: report on geometry processed
         """
+
         sdoc = ezdxf.readfile(self.filename)
     
         ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE')
-        n_splines = n_polylines = n_lines = n_arcs = 0
+        n_splines = n_polylines = n_lines = n_arcs =n_not_implemented = 0
         for e in ents:
             if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
                 self._process_2d_spline(e, delta= spline_delta)
@@ -147,6 +152,10 @@ class DxfImporter(CadImporter):
             elif isinstance(e, entities.Arc):
                 self._process_arc(e)
                 n_arcs += 1
+            else:
+                logging.warning(f'Importing of DXF type {type(e)} is not implemented yet.')
+                logging.warning('Raise issue at https://github.com/aegis1980/cad-to-shapely/issues')
+                n_not_implemented +=1
 
-        return f'Found {n_polylines} polylines, {n_splines} splines, {n_lines} lines, {n_arcs} arcs'
+        return f'Found {n_polylines} polylines, {n_splines} splines, {n_lines} lines, {n_arcs} arcs. Could not process {n_not_implemented} entities.'
  
