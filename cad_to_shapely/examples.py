@@ -22,7 +22,8 @@ def import_dxf_example1(filename : str, force_zip = False):
 def import_dxf_example(filename : str, force_zip = False):
     dxf_filepath = os.path.join(os.getcwd(),'example_files',filename)
     my_dxf = dxf.DxfImporter(dxf_filepath)
-    my_dxf.process(spline_delta = 0.1)   
+    my_dxf.process(spline_delta = 0.1)  
+    print(f'Units are {my_dxf.units}')
     my_dxf.polygonize(
         force_zip = force_zip
     )
@@ -31,8 +32,6 @@ def import_dxf_example(filename : str, force_zip = False):
     print (f"Found {len(polygons)} polygons")
 
     for p in polygons:
-        if p.interiors:
-            print("interior")
         x,y = p.exterior.xy
         plt.plot(x,y)
 

@@ -1,10 +1,7 @@
 import logging
-import os
 import math
-from matplotlib.patches import Polygon
 
 import numpy as np  
-
 from geomdl import NURBS, BSpline, utilities
 import ezdxf
 from ezdxf.addons import Importer
@@ -13,10 +10,27 @@ import shapely.geometry as sg
 
 from cadimporter import CadImporter
 import geometry
-import matplotlib.pyplot as plt
 import utils
 
+
+
+DXF_UNIT_CODES = {
+    0: None,
+    1: 'in',
+    2: 'ft',
+    3:'mi',
+    4: 'mm',
+    5: 'cm',
+    6: 'm',
+    7: 'km',
+    10: 'yd',
+    14: 'dm'
+}
+
+
+
 class DxfImporter(CadImporter):
+
 
     def __init__(self,filename : str):
         super().__init__(filename)
@@ -51,9 +65,6 @@ class DxfImporter(CadImporter):
                 pts = pts[1:-1]
 
                 xy.extend(pts)
-
-  #      for i, location in enumerate(polyline.points()): 
-  #          xy.append([location.x, location.y])
         
         if polyline.is_closed:    
             pl = sg.LinearRing(xy)
@@ -122,16 +133,24 @@ class DxfImporter(CadImporter):
         self.geometry.append(arc)
 
 
-    def process(self, spline_delta = 0.1):
+    def process(self, spline_delta = 0.1, degrees_per_segment :  float = 1):
         """
         Args:
-            spline_delta (float, optional): _description_. Defaults to 0.1
-
+            spline_delta (float, optional): Splines are not supported in shapely, so they are approximated as polylines. Defaults to 0.1
+            degrees_per_segment (float, optional):
         Returns:
             str: report on geometry processed
         """
 
         sdoc = ezdxf.readfile(self.filename)
+
+        if '$INSUNITS' in sdoc.header:
+            try:
+                u = int(sdoc.header['$INSUNITS'])
+                if u in DXF_UNIT_CODES:
+                    self.units = DXF_UNIT_CODES[u]
+            except ValueError:
+                logging.error('Casting to int error')
     
         ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE')
         n_splines = n_polylines = n_lines = n_arcs =n_not_implemented = 0
@@ -141,16 +160,22 @@ class DxfImporter(CadImporter):
                 n_splines +=1
             elif isinstance(e, entities.Polyline):
                 if e.get_mode() == 'AcDb2dPolyline':
-                    self._process_2d_polyline(e)
+                    self._process_2d_polyline(e,degrees_per_segment=degrees_per_segment
+                    )
                     n_polylines += 1
                 else:
-                    pass
+                    logging.warning(f'Importing of DXF type {type(e)} is not implemented yet.')
+                    logging.warning('Raise issue at https://github.com/aegis1980/cad-to-shapely/issues')
+                    n_not_implemented +=1
             elif isinstance(e, entities.Line):
                 self._process_line(e)
                 n_lines += 1
 
             elif isinstance(e, entities.Arc):
-                self._process_arc(e)
+                self._process_arc(
+                    e, 
+                    degrees_per_segment=degrees_per_segment
+                )
                 n_arcs += 1
             else:
                 logging.warning(f'Importing of DXF type {type(e)} is not implemented yet.')

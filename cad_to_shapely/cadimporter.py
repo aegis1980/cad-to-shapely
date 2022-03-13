@@ -9,9 +9,8 @@ from numpy import deprecate
 
 import shapely.geometry as sg
 from shapely import ops
-from shapely.coords import CoordinateSequence
-
 from shapely.geometry import Point, LineString
+
 
 class CadImporter(abc.ABC):
     """
@@ -21,6 +20,7 @@ class CadImporter(abc.ABC):
 
     def __init__(self,filename : str):
         self.filename = filename
+        self.units : str = None # unitless
         self.geometry : List[sg.base.BaseGeometry] = []
         self.polygons : List[sg.Polygon] = []
         self._already_zipped = False
