@@ -62,7 +62,8 @@ if __name__ == "__main__":
     #straight from http://www.steelweb.info/200x100x6.htm
     #filename = "200x100x6.dxf"
 
-    filename = "test1.dxf"
+   # filename = "test1.dxf"
+    filename = "tophat_autocadlite.dxf"
    # filename = "test2.dxf"
     #filename = "test3.dxf"
     import_dxf_example(filename)

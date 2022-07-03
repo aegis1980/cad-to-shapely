@@ -47,7 +47,6 @@ def test_hollow_section_from_steelweb_dot_info():
 
 
 def test_aluminium_extrusion1():
-    
     area = 884.2 # mm2 calculated in Rhino 3d
     assert area_check('test1.dxf',area)
 
@@ -59,6 +58,11 @@ def test_aluminium_extrusion2():
 
 
 def test_aluminium_extrusion3():
-
     area = 681.9 # mm2 calculated in Rhino 3d
     assert area_check('test3.dxf',area)
+
+
+def test_tophat_lwpolyline():
+    area = 789.552272
+    assert area_check('tophat_autocadlite.dxf', area)
+
