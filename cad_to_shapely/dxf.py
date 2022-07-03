@@ -73,6 +73,44 @@ class DxfImporter(CadImporter):
         self.geometry.append(pl) 
         
 
+    def _process_lwpolyline(self,polyline : entities.LWPolyline, degrees_per_segment : float = 1):
+        """
+        lwpolyline is a lightweight polyline (cf POLYLINE)
+        This function equiv to _process_2d_polyline
+        """
+        
+        xy = []
+
+        points = polyline.get_points()
+
+        for i,v1 in enumerate(points):
+            xy.append([v1[0],v1[1]])
+
+
+            if len(v1)==4 and v1[4]!=0: # lwpolygon.points() returns tuple x,y,s,e,b. s and e are start and end width (irrelevant)
+                if i+1 == len(points):
+                    if polyline.closed:
+                        v2 = points[0]
+                    else:
+                        break
+                else:
+                     v2 = points[i+1]
+
+                p1 = [v1[0],v1[1]] 
+                p2 = [v2[0],v2[1]] 
+
+                pts = utils.arc_points_from_bulge(p1,p2,v1[4],degrees_per_segment)
+                pts = pts[1:-1]
+
+                xy.extend(pts)
+        
+        if polyline.closed:    
+            pl = sg.LinearRing(xy)
+        else:
+            pl = sg.LineString(xy)
+        self.geometry.append(pl) 
+
+
     def _process_2d_spline(self,spline : entities.Spline, delta = 0.1):
         """
         Uses geomdl module to create intermediate b-spline from dxf spline.
@@ -152,21 +190,24 @@ class DxfImporter(CadImporter):
             except ValueError:
                 logging.error('Casting to int error')
     
-        ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE')
-        n_splines = n_polylines = n_lines = n_arcs =n_not_implemented = 0
+        ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE LWPOLYLINE')
+        
+        n_splines = n_polylines = n_lines = n_arcs =n_not_implemented =n_lwpolylines= 0
         for e in ents:
             if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
                 self._process_2d_spline(e, delta= spline_delta)
                 n_splines +=1
             elif isinstance(e, entities.Polyline):
                 if e.get_mode() == 'AcDb2dPolyline':
-                    self._process_2d_polyline(e,degrees_per_segment=degrees_per_segment
-                    )
+                    self._process_2d_polyline(e,degrees_per_segment=degrees_per_segment)
                     n_polylines += 1
                 else:
                     logging.warning(f'Importing of DXF type {type(e)} is not implemented yet.')
                     logging.warning('Raise issue at https://github.com/aegis1980/cad-to-shapely/issues')
                     n_not_implemented +=1
+            elif isinstance(e,entities.LWPolyline):
+                    self._process_lwpolyline(e,degrees_per_segment=degrees_per_segment)
+                    n_lwpolylines += 1
             elif isinstance(e, entities.Line):
                 self._process_line(e)
                 n_lines += 1
