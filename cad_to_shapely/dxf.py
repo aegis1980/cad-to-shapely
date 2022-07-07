@@ -171,6 +171,22 @@ class DxfImporter(CadImporter):
         self.geometry.append(arc)
 
 
+    def _process_circle(self, circle: entities.Circle, degrees_per_segment : float = 1):
+        """
+        shapely does not do circles, so we make it into an n-lined polyline.
+        """
+
+        pts =  utils.arc_points(
+            0,
+            2*math.pi,
+            circle.dxf.radius,
+            [circle.dxf.center.x,circle.dxf.center.y],
+            degrees_per_segment
+        )
+        circle = sg.LinearRing(pts)
+        self.geometry.append(circle)
+
+
     def process(self, spline_delta = 0.1, degrees_per_segment :  float = 1):
         """
         Args:
@@ -192,7 +208,7 @@ class DxfImporter(CadImporter):
     
         ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE LWPOLYLINE')
         
-        n_splines = n_polylines = n_lines = n_arcs =n_not_implemented =n_lwpolylines= 0
+        n_splines = n_polylines = n_lines = n_arcs  = n_circles=n_not_implemented =n_lwpolylines= 0
         for e in ents:
             if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
                 self._process_2d_spline(e, delta= spline_delta)
@@ -211,13 +227,18 @@ class DxfImporter(CadImporter):
             elif isinstance(e, entities.Line):
                 self._process_line(e)
                 n_lines += 1
-
             elif isinstance(e, entities.Arc):
                 self._process_arc(
                     e, 
                     degrees_per_segment=degrees_per_segment
                 )
                 n_arcs += 1
+            elif isinstance(e,entities.Circle):
+                self._process_circle(
+                    e, 
+                    degrees_per_segment=degrees_per_segment
+                )
+                n_circles += 1
             else:
                 logging.warning(f'Importing of DXF type {type(e)} is not implemented yet.')
                 logging.warning('Raise issue at https://github.com/aegis1980/cad-to-shapely/issues')

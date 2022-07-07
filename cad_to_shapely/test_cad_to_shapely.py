@@ -66,3 +66,11 @@ def test_tophat_lwpolyline():
     area = 789.552272
     assert area_check('tophat_autocadlite.dxf', area)
 
+def test_circles_and_polygons():
+    dxf_filepath = os.path.join(os.getcwd(),'example_files','tophat_circles_autocadlite.dxf')
+    my_dxf = dxf.DxfImporter(dxf_filepath)
+    my_dxf.process()
+    my_dxf.polygonize()
+
+    polygons = my_dxf.polygons
+    assert len(polygons) == 3
