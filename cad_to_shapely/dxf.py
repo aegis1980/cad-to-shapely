@@ -32,7 +32,11 @@ DXF_UNIT_CODES = {
 class DxfImporter(CadImporter):
 
 
-    def __init__(self,filename : str):
+    def __init__(self,filename : str,**config):
+
+        self._degrees_per_segment = config['degrees_per_segment'] if config and 'degrees_per_segment' in config else 1
+        self._spline_delta = config['spline_delta'] if config and 'spline_delta' in config else 0.1
+
         super().__init__(filename)
 
     def _get_attribs(self, e : entities.DXFEntity):
@@ -44,7 +48,8 @@ class DxfImporter(CadImporter):
         
         return attribs
 
-    def _process_2d_polyline(self,polyline : entities.Polyline, degrees_per_segment : float = 1):
+    def _process_2d_polyline(self,polyline : entities.Polyline):
+
         xy = []
 
         for i,v1 in enumerate(polyline.vertices):
@@ -61,7 +66,7 @@ class DxfImporter(CadImporter):
                 p1 = [v1.dxf.location.x,v1.dxf.location.y] 
                 p2 = [v2.dxf.location.x,v2.dxf.location.y] 
 
-                pts = utils.arc_points_from_bulge(p1,p2,v1.dxf.bulge,degrees_per_segment)
+                pts = utils.arc_points_from_bulge(p1,p2,v1.dxf.bulge,self._degrees_per_segment)
                 pts = pts[1:-1]
 
                 xy.extend(pts)
@@ -73,7 +78,7 @@ class DxfImporter(CadImporter):
         self.geometry.append(pl) 
         
 
-    def _process_lwpolyline(self,polyline : entities.LWPolyline, degrees_per_segment : float = 1):
+    def _process_lwpolyline(self,polyline : entities.LWPolyline):
         """
         lwpolyline is a lightweight polyline (cf POLYLINE)
         This function equiv to _process_2d_polyline
@@ -99,7 +104,7 @@ class DxfImporter(CadImporter):
                 p1 = [v1[0],v1[1]] 
                 p2 = [v2[0],v2[1]] 
 
-                pts = utils.arc_points_from_bulge(p1,p2,v1[4],degrees_per_segment)
+                pts = utils.arc_points_from_bulge(p1,p2,v1[4],self._degrees_per_segment)
                 pts = pts[1:-1]
 
                 xy.extend(pts)
@@ -111,11 +116,12 @@ class DxfImporter(CadImporter):
         self.geometry.append(pl) 
 
 
-    def _process_2d_spline(self,spline : entities.Spline, delta = 0.1):
+    def _process_2d_spline(self,spline : entities.Spline):
         """
         Uses geomdl module to create intermediate b-spline from dxf spline.
         This is then sampled as a linestring since shapely does not support splines. 
         """
+        
 
         curve = NURBS.Curve()
         curve.degree = spline.dxf.degree
@@ -125,7 +131,7 @@ class DxfImporter(CadImporter):
         #curve.weights = spline.weights + [1] * np.array(spline.control_point_count()- len(spline.weights))
         curve.knotvector = spline.knots
  
-        curve.delta = delta # TODO sampling - this could get out of hand depending on model dims and scale
+        curve.delta = self._spline_delta # TODO sampling - this could get out of hand depending on model dims and scale
 
         #TODO conditional delta: min length, n and check for straight lines
 
@@ -148,11 +154,12 @@ class DxfImporter(CadImporter):
         if l.length > 0:
             self.geometry.append(l) 
 
-    def _process_arc(self, arc: entities.Arc, degrees_per_segment : float = 1):
+    def _process_arc(self, arc: entities.Arc):
         """
         shapely does not do arcs, so we make it into an n-lined polyline.
         modified from here: https://stackoverflow.com/questions/30762329/how-to-create-polygons-with-arcs-in-shapely-or-a-better-library
         """
+
         start_angle = math.radians(arc.dxf.start_angle)
         end_angle = math.radians(arc.dxf.end_angle)
         if start_angle>end_angle:
@@ -163,7 +170,7 @@ class DxfImporter(CadImporter):
             end_angle,
             arc.dxf.radius,
             [arc.dxf.center.x,arc.dxf.center.y],
-            degrees_per_segment
+            self._degrees_per_segment
         )
 
         arc = sg.LineString(pts)
@@ -171,7 +178,7 @@ class DxfImporter(CadImporter):
         self.geometry.append(arc)
 
 
-    def _process_circle(self, circle: entities.Circle, degrees_per_segment : float = 1):
+    def _process_circle(self, circle: entities.Circle):
         """
         shapely does not do circles, so we make it into an n-lined polyline.
         """
@@ -181,13 +188,13 @@ class DxfImporter(CadImporter):
             2*math.pi,
             circle.dxf.radius,
             [circle.dxf.center.x,circle.dxf.center.y],
-            degrees_per_segment
+            self._degrees_per_segment
         )
         circle = sg.LinearRing(pts)
         self.geometry.append(circle)
 
 
-    def process(self, spline_delta = 0.1, degrees_per_segment :  float = 1):
+    def process(self, spline_delta = None, degrees_per_segment :  float = None):
         """
         Args:
             spline_delta (float, optional): Splines are not supported in shapely, so they are approximated as polylines. Defaults to 0.1
@@ -195,6 +202,8 @@ class DxfImporter(CadImporter):
         Returns:
             str: report on geometry processed
         """
+        self._degrees_per_segment = degrees_per_segment or self._degrees_per_segment
+        self._spline_delta = spline_delta or self._degrees_per_segment
 
         sdoc = ezdxf.readfile(self.filename)
 
@@ -206,38 +215,32 @@ class DxfImporter(CadImporter):
             except ValueError:
                 logging.error('Casting to int error')
     
-        ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE SHAPE LWPOLYLINE')
+        ents = sdoc.modelspace().query('CIRCLE LINE ARC POLYLINE ELLIPSE SPLINE LWPOLYLINE')
         
         n_splines = n_polylines = n_lines = n_arcs  = n_circles=n_not_implemented =n_lwpolylines= 0
         for e in ents:
             if isinstance(e, entities.Spline) and e.dxf.flags >= ezdxf.lldxf.const.PLANAR_SPLINE:
-                self._process_2d_spline(e, delta= spline_delta)
+                self._process_2d_spline(e)
                 n_splines +=1
             elif isinstance(e, entities.Polyline):
                 if e.get_mode() == 'AcDb2dPolyline':
-                    self._process_2d_polyline(e,degrees_per_segment=degrees_per_segment)
+                    self._process_2d_polyline(e)
                     n_polylines += 1
                 else:
                     logging.warning(f'Importing of DXF type {type(e)} is not implemented yet.')
                     logging.warning('Raise issue at https://github.com/aegis1980/cad-to-shapely/issues')
                     n_not_implemented +=1
             elif isinstance(e,entities.LWPolyline):
-                    self._process_lwpolyline(e,degrees_per_segment=degrees_per_segment)
+                    self._process_lwpolyline(e)
                     n_lwpolylines += 1
             elif isinstance(e, entities.Line):
                 self._process_line(e)
                 n_lines += 1
             elif isinstance(e, entities.Arc):
-                self._process_arc(
-                    e, 
-                    degrees_per_segment=degrees_per_segment
-                )
+                self._process_arc(e)
                 n_arcs += 1
             elif isinstance(e,entities.Circle):
-                self._process_circle(
-                    e, 
-                    degrees_per_segment=degrees_per_segment
-                )
+                self._process_circle(e)
                 n_circles += 1
             else:
                 logging.warning(f'Importing of DXF type {type(e)} is not implemented yet.')

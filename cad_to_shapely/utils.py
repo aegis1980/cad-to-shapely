@@ -36,6 +36,9 @@ def find_holes(polygons : List[sg.Polygon]) -> sg.Polygon:
     Returns:
         Shapely Polygon with holes 
     """
+    import warnings
+    warnings.warn("find_holes is deprecated; use filter_polygons", warnings.DeprecationWarning)
+    
     for p in polygons:
         if p.interiors:
             return p
@@ -57,6 +60,50 @@ def find_holes(polygons : List[sg.Polygon]) -> sg.Polygon:
 
     new = sg.Polygon(parent,holes=keepers)
     return new
+
+
+def filter_polygons(polygons : List[sg.Polygon], filter_flag:int = 3) -> List[sg.Polygon]:
+    """
+    Remove polygons that describe interior rings within a exterior rings so returned list only return
+    'surfaces'' (polygons in shapely) that either have holes, not holes or both (default)
+
+    Args:
+        polygons (List[sg.Polygons]): list of raw polygons
+        inc_flag (int): 1 = only surfaces with holes, 2 only surfaces without holes, 3 = both (default)
+
+    Returns:
+        Shapely Polygons both/withboth holes 
+    """
+
+    idx_hole_polygons = []    # polygons defining a hole. these get scrapped whatever
+    idx_poly_with_holes = []
+    idx_poly_no_holes = []
+
+    for i,p in enumerate(polygons):
+        if p.interiors:
+            idx_poly_with_holes.append(i)
+            for hole in p.interiors:
+                for j,r in enumerate(polygons):
+                    if i == j:
+                        continue
+                    if r.exterior.equals(hole):
+                        idx_hole_polygons.append(j)
+        else:
+            idx_poly_no_holes.append(i)
+                        
+    if filter_flag == 1: # keep the holy ones, get rid of ones without hoels
+        idx_poly_to_remove = idx_hole_polygons + idx_poly_no_holes
+    elif filter_flag == 2: #keep the non-holy ones.
+        idx_poly_to_remove = idx_hole_polygons + idx_poly_with_holes
+    else:
+        idx_poly_to_remove = idx_hole_polygons
+
+    #remove repeats so do screw up indexes in filtering step.
+    idx_poly_to_remove = sorted(list(set(idx_poly_to_remove)))
+
+                        
+    return [ele for idx, ele in enumerate(polygons) if idx not in idx_poly_to_remove] 
+
 
 
 
@@ -114,6 +161,7 @@ def arc_points(
     y = center[1] + radius * np.sin(theta)
 
     return np.column_stack([x, y])
+
 
 
 def arc_points_from_bulge(p1 : List[float], p2 : List[float], b : float, degrees_per_segment : float):
