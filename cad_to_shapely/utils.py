@@ -37,7 +37,7 @@ def find_holes(polygons : List[sg.Polygon]) -> sg.Polygon:
         Shapely Polygon with holes 
     """
     import warnings
-    warnings.warn("find_holes is deprecated; use filter_polygons", warnings.DeprecationWarning)
+    warnings.warn("find_holes is deprecated; use filter_polygons", DeprecationWarning)
     
     for p in polygons:
         if p.interiors:
