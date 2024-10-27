@@ -5,7 +5,6 @@
 import abc
 import logging
 from typing import List,Tuple
-from numpy import deprecate
 
 import shapely.geometry as sg
 from shapely import ops
