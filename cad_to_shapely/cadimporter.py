@@ -5,7 +5,7 @@
 import abc
 import logging
 from typing import List,Tuple
-from numpy import deprecate
+
 
 import shapely.geometry as sg
 from shapely import ops
@@ -65,6 +65,9 @@ class CadImporter(abc.ABC):
 
 
     def polygonize(self, simplify = True, force_zip = False, zip_length = 0.000001, retry_with_zip = True):
+        """
+        Try and form polygons (closed shapes) from imported geometry
+        """
     
         if not self.geometry:
             raise CadImporterError('Cannot run polygonize() since no geometry yet. Have you run process()?')
