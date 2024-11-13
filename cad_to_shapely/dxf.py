@@ -203,7 +203,7 @@ class DxfImporter(CadImporter):
             str: report on geometry processed
         """
         self._degrees_per_segment = degrees_per_segment or self._degrees_per_segment
-        self._spline_delta = spline_delta or self._degrees_per_segment
+        self._spline_delta = spline_delta or self._spline_delta
 
         sdoc = ezdxf.readfile(self.filename)
 

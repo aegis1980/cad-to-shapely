@@ -1,9 +1,8 @@
-from cmath import pi
-from typing import List,Tuple, Union
+
+from typing import List
 import random
 import math
 import logging
-from warnings import catch_warnings
 
 import numpy as np
 import shapely.geometry as sg

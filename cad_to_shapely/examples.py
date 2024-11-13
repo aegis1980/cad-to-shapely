@@ -88,16 +88,16 @@ def import_dxf_example(filename : str, force_zip = False):
 
 if __name__ == "__main__":
     #logging.basicConfig(level = logging.DEBUG)
-    #filename = "section_holes_complex_two.dxf"
+    filename = "section_holes_complex1.dxf"
     #filename = "simplelines_from_solidworks.dxf"
     #filename = "200ub22_R12dxf_linesandarcs.dxf"
     
     #straight from http://www.steelweb.info/200x100x6.htm
     #filename = "200x100x6.dxf"
 
-    filename = "test1.dxf"
-    filename = "three_different_sections.dxf"
+    #filename = "test1.dxf"
+    #filename = "three_different_sections.dxf"
    # filename = "tophat_circles_autocadlite.dxf"
    # filename = "test2.dxf"
     #filename = "test3.dxf"
-    import_dxf_example2(filename)
+    import_dxf_example(filename)
