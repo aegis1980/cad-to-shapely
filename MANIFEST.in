@@ -1,5 +1,0 @@
-include *.md
-include LICENSE
-include setup.py
-
-recursive-include example_files *
