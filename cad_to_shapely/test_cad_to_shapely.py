@@ -74,3 +74,35 @@ def test_circles_and_polygons():
 
     polygons = my_dxf.polygons
     assert len(polygons) == 3
+
+
+def test_arcs_with_negative_extrusion():
+    """
+    Mirrored entities are written with an OCS extrusion of (0,0,-1); their raw
+    coordinates must be transformed to WCS or the section outline never closes.
+    """
+    dxf_filepath = os.path.join(os.getcwd(),'example_files','hollow_section_mirrored_arcs.dxf')
+    my_dxf = dxf.DxfImporter(dxf_filepath)
+    my_dxf.process()
+    my_dxf.polygonize()
+
+    sections = utils.filter_polygons(my_dxf.polygons)
+    assert len(sections) == 1
+    assert len(sections[0].interiors) == 1
+    assert abs(sections[0].area - 1707.7) < 0.5
+
+
+def test_micro_gaps_zipped():
+    """
+    Same hollow section, drawn with two ~0.85 micron gaps in the inner ring.
+    The adaptive zip tolerance must close them so the hole is not lost.
+    """
+    dxf_filepath = os.path.join(os.getcwd(),'example_files','hollow_section_micro_gaps.dxf')
+    my_dxf = dxf.DxfImporter(dxf_filepath)
+    my_dxf.process()
+    my_dxf.polygonize()
+
+    sections = utils.filter_polygons(my_dxf.polygons)
+    assert len(sections) == 1
+    assert len(sections[0].interiors) == 1
+    assert abs(sections[0].area - 1707.7) < 0.5
