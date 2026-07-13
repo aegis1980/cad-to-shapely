@@ -45,8 +45,36 @@ class DxfImporter(CadImporter):
         """
         attribs = geometry._GeometryAttribs()
         attribs['layer'] = e.dxf.layer
-        
+
         return attribs
+
+    @staticmethod
+    def _to_wcs(entity, xy : list, elevation : float = 0):
+        """
+        Transform 2D points from an entity's Object Coordinate System (OCS) to WCS.
+
+        Planar DXF entities (ARC, CIRCLE, POLYLINE, LWPOLYLINE) store their
+        coordinates in OCS. CAD packages typically write mirrored entities with an
+        extrusion direction of (0, 0, -1), so reading the raw coordinates places
+        them mirrored about the y axis - and any polygon they bound never closes.
+
+        Args:
+            entity: source DXF entity (provides the OCS via its extrusion vector)
+            xy: 2D points in OCS as [x, y] pairs
+            elevation: entity elevation (z in OCS)
+
+        Returns:
+            2D points in WCS as [x, y] pairs
+        """
+        ocs = entity.ocs()
+        if not ocs.transform: # extrusion is (0, 0, 1): OCS is aligned with WCS
+            return xy
+
+        transformed = []
+        for p in xy:
+            w = ocs.to_wcs((p[0], p[1], elevation))
+            transformed.append([w.x, w.y])
+        return transformed
 
     def _process_2d_polyline(self,polyline : entities.Polyline):
 
@@ -70,13 +98,15 @@ class DxfImporter(CadImporter):
                 pts = pts[1:-1]
 
                 xy.extend(pts)
-        
-        if polyline.is_closed:    
+
+        xy = self._to_wcs(polyline, xy, polyline.dxf.elevation.z)
+
+        if polyline.is_closed:
             pl = sg.LinearRing(xy)
         else:
             pl = sg.LineString(xy)
-        self.geometry.append(pl) 
-        
+        self.geometry.append(pl)
+
 
     def _process_lwpolyline(self,polyline : entities.LWPolyline):
         """
@@ -92,7 +122,7 @@ class DxfImporter(CadImporter):
             xy.append([v1[0],v1[1]])
 
 
-            if len(v1)==4 and v1[4]!=0: # lwpolygon.points() returns tuple x,y,s,e,b. s and e are start and end width (irrelevant)
+            if v1[4]!=0: # lwpolyline.get_points() returns tuple x,y,s,e,b. s and e are start and end width (irrelevant)
                 if i+1 == len(points):
                     if polyline.closed:
                         v2 = points[0]
@@ -108,12 +138,14 @@ class DxfImporter(CadImporter):
                 pts = pts[1:-1]
 
                 xy.extend(pts)
-        
-        if polyline.closed:    
+
+        xy = self._to_wcs(polyline, xy, polyline.dxf.elevation)
+
+        if polyline.closed:
             pl = sg.LinearRing(xy)
         else:
             pl = sg.LineString(xy)
-        self.geometry.append(pl) 
+        self.geometry.append(pl)
 
 
     def _process_2d_spline(self,spline : entities.Spline):
@@ -172,6 +204,7 @@ class DxfImporter(CadImporter):
             [arc.dxf.center.x,arc.dxf.center.y],
             self._degrees_per_segment
         )
+        pts = self._to_wcs(arc, pts, arc.dxf.center.z)
 
         arc = sg.LineString(pts)
 
@@ -190,6 +223,7 @@ class DxfImporter(CadImporter):
             [circle.dxf.center.x,circle.dxf.center.y],
             self._degrees_per_segment
         )
+        pts = self._to_wcs(circle, pts, circle.dxf.center.z)
         circle = sg.LinearRing(pts)
         self.geometry.append(circle)
 

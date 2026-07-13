@@ -11,6 +11,13 @@ import shapely.geometry as sg
 from shapely import ops
 from shapely.geometry import Point, LineString
 
+# Adaptive zip tolerance, as a fraction of the geometry's larger bounding-box
+# dimension. Real-world CAD linework routinely has micron-scale endpoint gaps
+# which a fixed tolerance in drawing units cannot absorb across mm/m/inch files.
+RELATIVE_ZIP_LENGTH = 0.00001
+# Fallback zip tolerance when the geometry extents are degenerate (or empty).
+ABSOLUTE_ZIP_LENGTH = 0.000001
+
 
 class CadImporter(abc.ABC):
     """
@@ -32,11 +39,28 @@ class CadImporter(abc.ABC):
         """
         pass
 
-    def zip(self, zip_length: float = 0.000001):
+    def suggested_zip_length(self) -> float:
+        """
+        Snapping tolerance scaled to the extents of the imported geometry
+        (RELATIVE_ZIP_LENGTH of the larger bounding-box dimension), so it works
+        for drawings in mm, metres or inches alike.
+        """
+        b = self.bounds()
+        if b is None:
+            return ABSOLUTE_ZIP_LENGTH
+        extent = max(b[2] - b[0], b[3] - b[1])
+        if extent <= 0:
+            return ABSOLUTE_ZIP_LENGTH
+        return extent * RELATIVE_ZIP_LENGTH
+
+    def zip(self, zip_length: float = None):
         """
         Zip tries to reconcile not-quite-matching LineString start and end points.
         Point < zip_length apart will be equated.
+        Defaults (zip_length=None) to the adaptive suggested_zip_length().
         """
+        if zip_length is None:
+            zip_length = self.suggested_zip_length()
 
         zip = 0
         for i in range(len(self.geometry)):
@@ -64,21 +88,26 @@ class CadImporter(abc.ABC):
         logging.info(f"Zipped {zip} points")
 
 
-    def polygonize(self, simplify = True, force_zip = False, zip_length = 0.000001, retry_with_zip = True):
+    def polygonize(self, simplify = True, force_zip = False, zip_length = None, retry_with_zip = True):
         """
-        Try and form polygons (closed shapes) from imported geometry
+        Try and form polygons (closed shapes) from imported geometry.
+        zip_length=None uses the adaptive suggested_zip_length() when zipping.
         """
     
         if not self.geometry:
             raise CadImporterError('Cannot run polygonize() since no geometry yet. Have you run process()?')
 
+        incomplete = True
         if not force_zip:
             result, dangles, cuts, invalids = ops.polygonize_full(self.geometry)
             self.polygons = list(result.geoms)
+            # leftover cuts or dangles mean some linework failed to form a ring,
+            # e.g. the inner boundary of a hollow section with tiny gaps in it.
+            incomplete = not self.polygons or len(cuts.geoms) > 0 or len(dangles.geoms) > 0
 
-        if force_zip or (not self.polygons and not self._already_zipped and retry_with_zip):
+        if force_zip or (incomplete and not self._already_zipped and retry_with_zip):
             self.zip(zip_length)
-            
+
             result, dangles, cuts, invalids = ops.polygonize_full(self.geometry)
             self.polygons = list(result.geoms)
 
@@ -92,20 +121,26 @@ class CadImporter(abc.ABC):
         return result, dangles, cuts, invalids
 
 
-    def cleanup(self, simplify = True, zip_length = 0.000001, retry_with_zip = True) -> str:    
+    def cleanup(self, simplify = True, zip_length = None, retry_with_zip = True) -> str:
         logging.info("cleanup is depreciated BTW. Use the polygonize function instead")
-        self.polygonize(simplify,zip_length,retry_with_zip)
+        self.polygonize(simplify=simplify, zip_length=zip_length, retry_with_zip=retry_with_zip)
         return 'done'
 
 
     def bounds(self) -> Tuple[float]:
         """
         Returns, as (xmin,ymin,xmax,ymax) tuple, the bounding box which envelopes
-        this importer's geometry
+        this importer's geometry. None if there is no geometry.
         """
+        if not self.geometry:
+            return None
+        xmin, ymin = float('inf'), float('inf')
+        xmax, ymax = float('-inf'), float('-inf')
         for g in self.geometry:
             b = g.bounds
-            pass
+            xmin, ymin = min(xmin, b[0]), min(ymin, b[1])
+            xmax, ymax = max(xmax, b[2]), max(ymax, b[3])
+        return (xmin, ymin, xmax, ymax)
 
 class CadImporterError(Exception):
     pass
