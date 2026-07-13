@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cad_to_shapely"
+description = "Import CAD files to Shapely geometry"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Jon Robinson", email = "jonrobinson1980@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "ezdxf",
+    "numpy",
+    "shapely",
+    "geomdl",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = ["matplotlib", "pytest"]
+
+[project.urls]
+Homepage = "https://github.com/aegis1980/cad-to-shapely"
+
+[tool.setuptools.packages.find]
+include = ["cad_to_shapely*"]
+
+[tool.setuptools_scm]
